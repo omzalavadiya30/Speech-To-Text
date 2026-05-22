@@ -1,3 +1,17 @@
-.next
+# Dependencies
+node_modules/
+
+# Next.js
+.next/
+
+# Environment files
 .env
-uploads
+
+# Uploads
+uploads/
+
+# Logs
+npm-debug.log
+
+# Build output
+dist/
