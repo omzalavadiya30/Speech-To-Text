@@ -1,5 +1,6 @@
 const express = require('express');
 const multer = require('multer');
+const { transcribeAudio } = require('../controllers/transcriptionController');
 
 const router = express.Router();
 
@@ -14,11 +15,6 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage });
 
-router.post('/upload', upload.single('audio'), (req, res) => {
-    if (!req.file) {
-        return res.status(400).json({ error: 'No file uploaded' });
-    }
-    res.json({ message: 'File uploaded successfully', file: req.file });
-});
+router.post('/upload', upload.single('audio'), transcribeAudio);
 
 module.exports = router;
