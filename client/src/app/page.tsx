@@ -1,16 +1,31 @@
 'use client';
 
 import axios from "axios";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 export default function Home() {
   const [audioFile, setAudioFile] = useState<File | null>(null);
   const [recording, setRecording] = useState(false);
   const [transcription, setTranscription] = useState("");
   const [loading, setLoading] = useState(false);
+  const [history, setHistory] = useState([]);
 
   const recorder= useRef<MediaRecorder | null>(null);
   const chunks = useRef<Blob[]>([]);
+
+  const fetchHistory = async () => {
+    try {
+      const res = await axios.get("/api/history");
+      setHistory(res.data);
+    } catch (err) {
+      console.error("Error fetching history:", err);
+      alert("Failed to fetch transcription history.");
+    }
+  }
+
+  useEffect(() => {
+    fetchHistory();
+  }, []);
 
   const startRecording = async () => {
     if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
@@ -52,6 +67,7 @@ export default function Home() {
     try {
       const res = await axios.post("/api/upload", formData);
       setTranscription(res.data.transcription);
+      fetchHistory();
     } catch (err) {
       console.error("Error uploading file:", err);
       alert("Failed to transcribe audio.");
@@ -93,6 +109,17 @@ export default function Home() {
               <p className="text-gray-700">{transcription || "Transcription will appear here"}</p>
             )
           }
+        </div>
+        <div>
+          <h2 className="font-bold mt-5">Transcription History</h2>
+          <div className="space-y-2">
+            {history.map((item: any) => (
+              <div key={item._id} className="border rounded p-2">
+                <p className="text-gray-700">{item.transcription}</p>
+                <p className="text-sm text-gray-500">{item.filename} {" "} {new Date(item.createdAt).toLocaleString()}</p>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </main>

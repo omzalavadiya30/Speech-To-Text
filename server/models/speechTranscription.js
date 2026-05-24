@@ -1,8 +1,9 @@
 const mongoose = require('mongoose');
 
 const speechTranscriptionSchema = new mongoose.Schema({
-    audioUrl: { type: String, required: true },
+    filename: { type: String, required: true },
     transcription: { type: String, required: true },
+    audioUrl: { type: String, required: true },
     createdAt: { type: Date, default: Date.now }
 });
 
