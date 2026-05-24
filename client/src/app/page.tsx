@@ -1,11 +1,13 @@
 'use client';
 
+import axios from "axios";
 import { useRef, useState } from "react";
 
 export default function Home() {
   const [audioFile, setAudioFile] = useState<File | null>(null);
   const [recording, setRecording] = useState(false);
   const [transcription, setTranscription] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const recorder= useRef<MediaRecorder | null>(null);
   const chunks = useRef<Blob[]>([]);
@@ -41,9 +43,26 @@ export default function Home() {
     }
   };
 
+  const handleUpload= async () => {
+    if (!audioFile) return;
+    setLoading(true);
+    const formData = new FormData();
+    formData.append("audio", audioFile);
+
+    try {
+      const res = await axios.post("/api/upload", formData);
+      setTranscription(res.data.transcription);
+    } catch (err) {
+      console.error("Error uploading file:", err);
+      alert("Failed to transcribe audio.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
-    <main className="min-h-screen flex items-center justify-center bg-gray-100">
-      <div className="bg-white p-8 rounded-xl shadow-lg w-125 space-y-5">
+    <main className="min-h-screen flex items-center justify-center bg-slate-100">
+      <div className="bg-white p-8 rounded-2xl shadow-xl w-125 space-y-5">
         <h1 className="text-3xl font-bold text-center">Speech To Text</h1>
 
         <div>
@@ -55,18 +74,25 @@ export default function Home() {
             <p className="text-sm text-gray-600">Selected file: {audioFile.name}</p>
           )
         }
+        <button onClick={handleUpload} disabled={loading} className="bg-blue-600 text-white w-full py-2 rounded">Upload Audio</button>
         
         {
           !recording ? (
-            <button onClick={startRecording} className="w-full bg-green-500 text-white p-2 rounded">Start Recording</button>
+            <button onClick={startRecording} className="w-full bg-green-600 text-white p-2 rounded">Start Recording</button>
           ) : (
-            <button onClick={stopRecording} className="w-full bg-red-500 text-white p-2 rounded">Stop Recording</button>
+            <button onClick={stopRecording} className="w-full bg-red-600 text-white p-2 rounded">Stop Recording</button>
           )
         }
 
-        <div className="border rounded-lg p-4 min-h-30 bg-gray-50">
+        <div className="border rounded p-4 min-h-30">
           <h2 className="font-semibold mb-2">Transcription</h2>
-          <p className="text-gray-700">{transcription || "Transcription will appear here"}</p>
+          {
+            loading ? (
+              <p className="text-gray-500">Transcribing...</p>
+            ) : (
+              <p className="text-gray-700">{transcription || "Transcription will appear here"}</p>
+            )
+          }
         </div>
       </div>
     </main>
