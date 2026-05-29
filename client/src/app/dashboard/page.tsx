@@ -1,6 +1,6 @@
 'use client';
 import axios from 'axios';
-import { AudioWaveform, LogOut, User} from 'lucide-react';
+import { AudioWaveform, Upload, Mic, LogOut, User, Loader2, History } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react'
 import toast from "react-hot-toast";
@@ -13,20 +13,9 @@ const Dashboard = () => {
     const [history, setHistory] = useState([]);
     const [error, setError] = useState("");
     const [user, setUser] = useState<any>(null);
-    const [recording, setRecording] = useState(false);
-
-    const recorder = useRef<MediaRecorder | null>(null);
-    const chunks = useRef<Blob[]>([]);
-
-    const fetchHistory = async () => {
-        try {
-            const res = await axios.get("/api/history", {withCredentials: true});
-            setHistory(res.data);
-        } catch (err: any) {
-            console.error("Error fetching history:", err);
-            toast.error(err.response?.data?.error || "Failed to fetch history");
-        }
-    };
+    const [liveTranscription, setLiveTranscription] = useState("");
+    const [isListening, setIsListening] = useState(false);
+    const recognition = useRef<any>(null);
 
     useEffect(()=>{
         const checkAuth= async() => {
@@ -44,35 +33,66 @@ const Dashboard = () => {
         checkAuth();
     },[]);
 
-    const startRecording = async () => {
-        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                recorder.current = new MediaRecorder(stream);
-                chunks.current = [];
-                recorder.current.ondataavailable = (e) => {
-                    chunks.current.push(e.data);
-                };
-                recorder.current.onstop = () => {
-                    const blob = new Blob(chunks.current, { type: "audio/wav" });
-                    const file = new File([blob], "record.wav", { type: "audio/wav" });
-                    setAudioFile(file);
-                };
-                recorder.current.start();
-                setRecording(true);
-            } catch (err) {
-                console.error("Error accessing microphone:", err);
-                setError("Failed to access microphone.");
+    useEffect(() => {
+        const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+
+        if(!SpeechRecognition) {
+            toast.error("Speech Recognition API is not supported in this browser.");
+            return;
+        }
+
+        const recog = new SpeechRecognition();
+        recog.continuous = true;
+        recog.interimResults = true;
+        recog.lang = 'en-US';
+
+        recog.onresult = (event: any) => {
+            let interimTranscript = "";
+            let finalTranscript = "";
+            for(let i = event.resultIndex; i < event.results.length; i++) {
+                const transcript = event.results[i][0].transcript;
+                if(event.results[i].isFinal) {
+                    finalTranscript += transcript + " ";
+                } else {
+                    interimTranscript += transcript;
+                }
             }
-        } else {
-            setError("getUserMedia not supported in this browser.");
+            setLiveTranscription(finalTranscript + interimTranscript);
+        };
+
+        recog.onerror = () => {
+            toast.error("Speech recognition error. Please try again.");
+            setIsListening(false);
+        }
+
+        recognition.current = recog;
+    },[])
+
+
+    const fetchHistory = async () => {
+        try {
+            const res = await axios.get("/api/history", {withCredentials: true});
+            setHistory(res.data);
+        } catch (err: any) {
+            console.error("Error fetching history:", err);
+            toast.error(err.response?.data?.error || "Failed to fetch history");
+        }
+    };
+
+    const startRecording = async () => {
+        if(recognition.current) {
+            recognition.current.start();
+            setIsListening(true);
+            toast.success("Live transcription started. Speak now!");
         }
     };
 
     const stopRecording = () => {
-        if (recorder.current) {
-            recorder.current.stop();
-            setRecording(false);
+        if(recognition.current) {
+            recognition.current.stop();
+            setIsListening(false);
+            setTranscription(liveTranscription);
+            toast.success("Live transcription stopped.");
         }
     };
 
@@ -87,6 +107,7 @@ const Dashboard = () => {
             setError("Unsupported file type. Please upload a WAV, MP3, or WEBM audio file.");
             return;
         }
+
         try {
             setLoading(true);
             const formData = new FormData();
@@ -99,6 +120,26 @@ const Dashboard = () => {
         } catch (err: any) {
             console.error("Error uploading file:", err);
             toast.error(err.response?.data?.error || "Failed to transcribe audio");
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    const handleSaveLiveTranscription = async () => {
+        if(!liveTranscription.trim()) {
+            toast.error("No live transcription to save.");
+            return;
+        }
+        try {
+            setLoading(true);
+            await axios.post("/api/save-live", { transcription: liveTranscription }, { withCredentials: true });
+            setTranscription(liveTranscription);
+            setLiveTranscription("");
+            fetchHistory();
+            toast.success("Live transcription saved successfully!");
+        } catch (err: any) {
+            console.error("Error saving live transcription:", err);
+            toast.error(err.response?.data?.error || "Failed to save live transcription");
         } finally {
             setLoading(false);
         }
@@ -144,7 +185,33 @@ const Dashboard = () => {
                     {/* Upload Card */}
                     <div className="bg-white/8 backdrop-blur-xl rounded-3xl p-8 border border-cyan-500/20 shadow-[0_0_30px_rgba(0,255,255,0.08)]">
                         <h2 className="text-2xl font-semibold mb-6">Upload / Record</h2>
-                        <input type="file" accept="audio/*" onChange={(e) => setAudioFile(e.target.files ? e.target.files[0] : null)} className="w-full p-4 rounded-2xl bg-slate-900 border border-slate-700" />
+                        <div className="mb-6">
+                            <label htmlFor="audio-upload" className="flex flex-col items-center justify-center w-full h-56 border-2 border-dashed border-slate-700 hover:border-cyan-500 rounded-3xl
+                                bg-slate-950/50 cursor-pointer transition-all duration-300">
+
+                                <Upload size={40} className="text-slate-500 mb-4" />
+
+                                <p className="text-lg text-slate-300">Click to upload or drag & drop</p>
+                                <p className="text-slate-500 text-sm mt-2">Audio files only</p>
+
+                                {
+                                    audioFile &&
+                                        <div className="mt-5 px-4 py-2 rounded-xl bg-cyan-500/10 border border-cyan-500/20">
+                                            <span className="text-cyan-300">
+                                            {audioFile.name}
+                                            </span>
+                                        </div>
+                                }
+                            </label>
+                            <input id="audio-upload" type="file" accept="audio/*" hidden onChange={(e) => {setError(""); setAudioFile(e.target.files ? e.target.files[0] : null);}} />
+                            {/* Supported Formats */}
+                            <div className="mt-3 text-center">
+                                <p className="text-sm text-slate-400">
+                                    Supported formats: <span className="text-cyan-400 ml-1">MP3, WAV, WEBM, M4A</span>
+                                </p>
+                                <p className="text-xs text-slate-500 mt-1">Maximum file size: 25 MB</p>
+                            </div>
+                        </div>
                         {
                             audioFile && (
                                 <p className="text-sm text-cyan-300 mt-3">Selected file: {audioFile.name}</p>
@@ -153,34 +220,58 @@ const Dashboard = () => {
 
                         {
                             error &&
-                            <div className="bg-red-500/20 border border-red-500 text-red-300 p-3 rounded-xl mt-3">
-                                {error}
-                            </div>
+                                <div className="text-red-400 mt-3">
+                                    {error}
+                                </div>
                         }
 
-                        <button onClick={handleUpload} disabled={loading} className="w-full mt-4 py-3 rounded-xl bg-linear-to-r from-cyan-500 to-blue-500 font-semibold flex justify-center items-center gap-3 disabled:opacity-70 disabled:cursor-not-allowed">
-                            {
-                                loading ?
-                                    <>
-                                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                                        <span>Transcribing...</span>
-                                    </>
-                                    :
-                                    "Upload Audio"
-                            }
+                        <button onClick={handleUpload} disabled={loading} className="w-full mt-4 py-3 rounded-xl bg-linear-to-r from-cyan-500 to-blue-500 font-semibold flex justify-center items-center gap-3">
+                        {
+                            loading ?
+                            <>
+                                <Loader2 size={18} className="animate-spin" />
+                                <span>Transcribing...</span>
+                            </>
+                            :
+                            <>
+                                <Upload size={20} />
+                                <span>Upload Audio</span>
+                            </>
+                        }
                         </button>
                         {
-                            !recording ?
-                                <button onClick={startRecording} className="w-full mt-4 py-3 rounded-xl bg-linear-to-r from-green-500 to-emerald-500">Start Recording</button>
+                            !isListening ?
+                                <button onClick={startRecording} className="w-full mt-4 py-3 rounded-xl bg-linear-to-r from-green-500 to-emerald-500 flex justify-center items-center gap-2">
+                                    <Mic size={20} />
+                                    <span>Start Recording</span>
+                                </button>
                                 :
-                                <button onClick={stopRecording} className="w-full mt-4 py-3 rounded-xl bg-linear-to-r from-red-500 to-pink-600 animate-pulse">Stop Recording</button>
+                                <button onClick={stopRecording} className="w-full mt-4 py-3 rounded-xl bg-linear-to-r from-red-500 to-pink-600 animate-pulse">
+                                    Stop Recording
+                                </button>
                         }
+                        
                     </div>
 
                     {/* Latest Transcript */}
                     <div className="bg-white/8 backdrop-blur-xl rounded-3xl p-8 border border-purple-500/20 shadow-[0_0_30px_rgba(255,0,255,0.08)]">
-                        <h2 className="text-2xl font-semibold mb-5">Latest Transcription</h2>
-                        <div className="bg-slate-900 rounded-2xl p-6 min-h-62.5">
+                        <div className="flex justify-between items-center mb-5">
+                            <h2 className="text-2xl font-semibold">Latest Transcription</h2>
+                            {
+                                isListening ? (
+                                    <span className="text-xs px-3 py-1 rounded-full bg-red-500/20 text-red-400 animate-pulse">
+                                        Live Recording
+                                    </span>
+                                ) : (
+                                    liveTranscription && (
+                                        <span className="text-xs px-3 py-1 rounded-full font-medium bg-green-500/20 text-green-400">
+                                            Ready To Save
+                                        </span>
+                                    )
+                                )
+                            }
+                        </div>
+                        <div className="bg-slate-900 mb-4 rounded-2xl p-6 h-80 border border-slate-800 overflow-y-auto">
                             {
                                 loading ?
                                     <div className="space-y-4">
@@ -189,28 +280,55 @@ const Dashboard = () => {
                                         <div className="h-4 w-1/2 bg-slate-700 rounded animate-pulse" />
                                     </div>
                                     :
-                                    <p>{transcription || "No transcription available"}</p>
+                                    <p className="text-slate-200 leading-8">{liveTranscription || transcription || "No transcription available"}</p>
                             }
                         </div>
+                        {
+                            liveTranscription && !isListening && (
+                                <button onClick={handleSaveLiveTranscription} className="bg-linear-to-r from-purple-500 to-pink-500 px-5 py-2.5 rounded-xl font-medium hover-scale-105 transition">
+                                    Save Live Transcription to History
+                                </button>             
+                            )
+                        }
                     </div>
                 </div>
 
                 {/* History Section */}
                 <div className="mt-12 bg-white/8 backdrop-blur-xl rounded-3xl p-8 border border-cyan-500/20">
-                    <h2 className="text-3xl font-bold mb-8">Transcription History</h2>
+                    <div className="flex items-center gap-3 mb-8">
+                        <History className="text-cyan-400" />
+                        <h2 className="text-3xl font-bold">Transcription History</h2>
+                    </div>
                     <div className="grid md:grid-cols-2 gap-5 max-h-125 overflow-y-auto pr-2 scrollbar-none [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
                         {
                             history.length > 0 ?
-                                history.map((item: any) => (
+                                history.map((item:any)=>(
                                     <div key={item._id} className="bg-slate-900/80 rounded-2xl border border-slate-700 p-5 hover:border-cyan-500 transition">
-                                        {
+                                        <div className= "flex justify-between items-center mb-3">
+                                            <span className={`text-xs px-3 py-1 rounded-full ${item.source === 'live' ? 'bg-purple-500/20 text-purple-300' : 'bg-cyan-500/20 text-cyan-300'}`}>
+                                                {
+                                                    item.source === 'live' ? (
+                                                        <span className="flex items-center gap-1">
+                                                            <Mic className="w-4 h-4" />
+                                                            Live
+                                                        </span>
+                                                        ) : (
+                                                        <span className="flex items-center gap-1">
+                                                            <Upload className="w-4 h-4" />
+                                                            Uploaded
+                                                        </span>
+                                                    )
+                                                }
+                                            </span>
+                                        </div>
+                                        {/* {
                                             loading && (
                                                 <p className="text-cyan-400 text-sm mb-4">Analyzing audio using AI...</p>
                                             )
-                                        }
-                                        <p>{item.transcription}</p>
+                                        } */}
+                                        <p className="text-slate-200">{item.transcription}</p>
                                         <div className="text-sm text-slate-400 mt-3">{item.filename}</div>
-                                        <div className="text-xs text-slate-500">
+                                        <div className="text-xs text-slate-500 mt-1">
                                             {new Date(item.createdAt).toLocaleString()}
                                         </div>
                                     </div>
@@ -225,4 +343,4 @@ const Dashboard = () => {
     );
 }
 
-export default Dashboard
+export default Dashboard;

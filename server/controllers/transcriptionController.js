@@ -17,7 +17,8 @@ exports.transcribeAudio = async (req, res) => {
             user: req.user.id,
             filename: req.file.originalname,
             transcription: transcript,
-            audioUrl: req.file.path
+            audioUrl: req.file.path,
+            source: 'upload'
         });
         res.json({ transcription: saved.transcription, audioUrl: saved.audioUrl });
     } catch (error) {
@@ -25,6 +26,27 @@ exports.transcribeAudio = async (req, res) => {
         res.status(500).json({ error: 'Failed to transcribe audio' });
     }
 };
+
+exports.saveLiveTranscription = async (req, res) => {
+    try {
+        const { transcription } = req.body;
+        if (!transcription) {
+            return res.status(400).json({ error: 'No transcription provided' });
+        }
+        const saved = await SpeechTranscription.create({
+            user: req.user.id,
+            filename: `live-${Date.now()}.txt`,
+            transcription,
+            audioUrl: 'Live Speech',
+            source: 'live'
+        });
+        res.status(200).json({ message: 'Live transcription saved successfully', saved });
+    } catch (error) {
+        console.error('Error saving live transcription:', error);
+        res.status(500).json({ error: 'Failed to save live transcription' });
+    }
+};
+
 exports.getHistory = async (req, res) => {
     try {
         const history = await SpeechTranscription.find({ user: req.user.id }).sort({ createdAt: -1 });

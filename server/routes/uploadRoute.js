@@ -1,6 +1,6 @@
 const express = require('express');
 const multer = require('multer');
-const { transcribeAudio, getHistory } = require('../controllers/transcriptionController');
+const { transcribeAudio, saveLiveTranscription, getHistory } = require('../controllers/transcriptionController');
 const SpeechTranscription = require('../models/speechTranscription');
 const auth= require('../middleware/authMiddleware');
 
@@ -39,5 +39,6 @@ router.post('/upload', auth, (req, res, next) => {
 
 router.get('/history', auth, getHistory);
 
+router.post("/save-live", auth, saveLiveTranscription);
 
 module.exports = router;

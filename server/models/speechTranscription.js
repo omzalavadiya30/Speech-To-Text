@@ -5,6 +5,7 @@ const speechTranscriptionSchema = new mongoose.Schema({
     filename: { type: String, required: true },
     transcription: { type: String, required: true },
     audioUrl: { type: String, required: true },
+    source: { type: String, enum: ['upload', 'live'], default: 'upload' },
     createdAt: { type: Date, default: Date.now }
 });
 
