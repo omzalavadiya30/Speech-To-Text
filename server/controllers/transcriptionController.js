@@ -20,6 +20,7 @@ exports.transcribeAudio = async (req, res) => {
             audioUrl: req.file.path,
             source: 'upload'
         });
+        fs.unlinkSync(req.file.path); // Delete the uploaded file after processing
         res.json({ transcription: saved.transcription, audioUrl: saved.audioUrl });
     } catch (error) {
         console.error('Error transcribing audio:', error);
