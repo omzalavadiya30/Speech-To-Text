@@ -14,6 +14,7 @@ exports.transcribeAudio = async (req, res) => {
             return res.status(400).json({ error: 'Could not detect speech' });
         }
         const saved= await SpeechTranscription.create({
+            user: req.user.id,
             filename: req.file.originalname,
             transcription: transcript,
             audioUrl: req.file.path
@@ -22,5 +23,14 @@ exports.transcribeAudio = async (req, res) => {
     } catch (error) {
         console.error('Error transcribing audio:', error);
         res.status(500).json({ error: 'Failed to transcribe audio' });
+    }
+};
+exports.getHistory = async (req, res) => {
+    try {
+        const history = await SpeechTranscription.find({ user: req.user.id }).sort({ createdAt: -1 });
+        res.status(200).json(history);
+    } catch (error) {
+        console.error('Error fetching history:', error);
+        res.status(500).json({ error: 'Failed to fetch history' });
     }
 };

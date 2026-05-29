@@ -1,7 +1,8 @@
 const express = require('express');
 const multer = require('multer');
-const { transcribeAudio } = require('../controllers/transcriptionController');
+const { transcribeAudio, getHistory } = require('../controllers/transcriptionController');
 const SpeechTranscription = require('../models/speechTranscription');
+const auth= require('../middleware/authMiddleware');
 
 const router = express.Router();
 
@@ -25,7 +26,7 @@ const fileFilter = (req, file, cb) => {
 
 const upload = multer({ storage, fileFilter, limits: { fileSize: 10 * 1024 * 1024 } });
 
-router.post('/upload', (req, res, next) => {
+router.post('/upload', auth, (req, res, next) => {
     upload.single('audio')(req, res, (err) => {
         if (err instanceof multer.MulterError) {
             return res.status(400).json({ error: err.message });
@@ -36,14 +37,7 @@ router.post('/upload', (req, res, next) => {
     })
 }, transcribeAudio);
 
-router.get('/history', async (req, res) => {
-    try {
-        const history = await SpeechTranscription.find().sort({ createdAt: -1 });
-        res.json(history);
-    } catch (error) {
-        console.error('Error fetching history:', error);
-        res.status(500).json({ error: 'Failed to fetch history' });
-    }
-});
+router.get('/history', auth, getHistory);
+
 
 module.exports = router;
