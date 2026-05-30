@@ -145,13 +145,17 @@ const Dashboard = () => {
         }
     }
 
-    const handleLogout = () => {
-        document.cookie = "token=; Max-Age=0; path=/;";
-        localStorage.removeItem('user');
-        toast.success("Logged out successfully!");
-        setTimeout(() => {
-            router.push("/login");
-        }, 1000);
+    const handleLogout = async () => {
+        try {
+            const res= await axios.post("/api/auth/logout", {}, { withCredentials: true });
+            localStorage.removeItem('user');
+            toast.success(res.data.message || "Logged out successfully");
+            router.replace("/login");
+        }
+        catch(err: any) {
+            console.error("Logout error:", err);
+            toast.error(err.response?.data?.error || "Logout failed");
+        }
     }
 
     return (
@@ -271,7 +275,7 @@ const Dashboard = () => {
                                 )
                             }
                         </div>
-                        <div className="bg-slate-900 mb-4 rounded-2xl p-6 h-80 border border-slate-800 overflow-y-auto">
+                        <div className="bg-slate-900 mb-4 rounded-2xl p-6 h-96 border border-slate-800 overflow-y-auto">
                             {
                                 loading ?
                                     <div className="space-y-4">
