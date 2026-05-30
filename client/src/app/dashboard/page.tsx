@@ -44,7 +44,8 @@ const Dashboard = () => {
         const recog = new SpeechRecognition();
         recog.continuous = true;
         recog.interimResults = true;
-        recog.lang = 'en-US';
+        recog.lang = 'en-IN';
+        recog.maxAlternatives = 5
 
         recog.onresult = (event: any) => {
             let interimTranscript = "";
@@ -325,11 +326,11 @@ const Dashboard = () => {
                                                 }
                                             </span>
                                         </div>
-                                        {/* {
+                                        {
                                             loading && (
                                                 <p className="text-cyan-400 text-sm mb-4">Analyzing audio using AI...</p>
                                             )
-                                        } */}
+                                        }
                                         <p className="text-slate-200">{item.transcription}</p>
                                         <div className="text-sm text-slate-400 mt-3">{item.filename}</div>
                                         <div className="text-xs text-slate-500 mt-1">
