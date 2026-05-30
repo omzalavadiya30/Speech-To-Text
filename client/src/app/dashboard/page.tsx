@@ -275,7 +275,7 @@ const Dashboard = () => {
                                 )
                             }
                         </div>
-                        <div className="bg-slate-900 mb-4 rounded-2xl p-6 h-96 border border-slate-800 overflow-y-auto">
+                        <div className="bg-slate-900 mb-4 rounded-2xl p-6 h-80 border border-slate-800 overflow-y-auto">
                             {
                                 loading ?
                                     <div className="space-y-4">
