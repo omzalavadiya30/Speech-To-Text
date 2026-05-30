@@ -10,7 +10,7 @@ Speech To Text is a full-stack web application that converts speech into text us
 
 ### Frontend Application
 
-https://speech-to-text-kappa-neon.vercel.app/login
+https://speech-to-text-kappa-neon.vercel.app
 
 ### Backend API
 
