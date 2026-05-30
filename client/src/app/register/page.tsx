@@ -99,7 +99,7 @@ const Register=()=>{
                 <div className="mb-4">
                     <div className="relative">
                         <Mail className="absolute left-4 top-4 text-slate-500" />
-                        <input name="email" placeholder="Email" value={form.email} onChange={handleChange} className="w-full pl-12 p-4 rounded-xl bg-slate-900 text-white border border-slate-700" />
+                        <input type="email" name="email" placeholder="Email" value={form.email} onChange={handleChange} className="w-full pl-12 p-4 rounded-xl bg-slate-900 text-white border border-slate-700" />
                     </div>
                     {error.email && <p className="text-red-300 text-sm mt-2">{error.email}</p>}
                 </div>

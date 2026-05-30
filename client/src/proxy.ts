@@ -1,7 +1,7 @@
 import {NextResponse } from 'next/server';
 import type {NextRequest} from 'next/server';
 
-export const middleware=(req:NextRequest) => {
+export const proxy=(req:NextRequest) => {
     const token=req.cookies.get('token');
     const isAuthPage= req.nextUrl.pathname.startsWith('/login') || req.nextUrl.pathname.startsWith('/register');
     const isDashboardPage=req.nextUrl.pathname.startsWith('/dashboard');

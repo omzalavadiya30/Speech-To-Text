@@ -4,13 +4,11 @@ import { Eye, EyeOff, Loader2, Lock, LogIn, Mail } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 
 const Login= () => {
-
     const router= useRouter();
-
     const [email, setEmail]= useState("");
     const [password, setPassword]= useState("");
     const [error, setError]= useState({
@@ -19,6 +17,15 @@ const Login= () => {
     });
     const [loading, setLoading]= useState(false);
     const [show, setShow]= useState(false);
+    const [rememberMe, setRememberMe] = useState(false);
+
+    useEffect(() => {
+        const rememberedEmail = localStorage.getItem("rememberEmail");
+        if (rememberedEmail) {
+            setEmail(rememberedEmail);
+            setRememberMe(true);
+        }
+    }, []);
 
     const validate= () => {
         const newError= { email: "", password: "" };
@@ -54,8 +61,14 @@ const Login= () => {
         
         try {
             setLoading(true);
-            const res= await axios.post("/api/auth/login", {email, password}, {withCredentials: true });
+            const res= await axios.post("/api/auth/login", {email, password, rememberMe}, {withCredentials: true });
             localStorage.setItem('user', JSON.stringify(res.data.user));
+            if(rememberMe) {
+                localStorage.setItem("rememberEmail", email);
+            }
+            else {
+                localStorage.removeItem("rememberEmail");
+            }
             toast.success("Login successful");
             router.push("/dashboard");
         }
@@ -66,8 +79,6 @@ const Login= () => {
             setLoading(false);
         }
     };
-
-
 
     return(
         <div className="min-h-screen flex justify-center items-center bg-linear-to-br from-slate-950 via-blue-950 to-slate-950 px-4">
@@ -92,6 +103,16 @@ const Login= () => {
                         </button>
                     </div>
                     {error.password && <p className="text-red-400 text-sm mt-2">{error.password}</p>}
+                </div>
+                <div className="flex items-center justify-between mt-4">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} className="h-4 w-4 rounded border-slate-600 bg-slate-900 text-cyan-500" />
+                        <span className="text-slate-300">Remember Me</span>
+                    </label>
+
+                    <button type="button" onClick={() => router.push("/forgot-password")} className="text-cyan-400 text-sm hover:text-cyan-300 hover:underline" >
+                        Forgot Password?
+                    </button>
                 </div>
                 
                 <button disabled={loading} className="w-full mt-8 py-4 rounded-xl bg-linear-to-r from-cyan-500 to-blue-500 flex justify-center items-center gap-3 font-semibold">
